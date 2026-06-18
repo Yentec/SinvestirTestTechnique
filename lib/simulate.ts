@@ -93,13 +93,13 @@ export function simulate(input: SimulationInput): SimulationResult {
 
   // --- Validation des entrées ---
   if (!Array.isArray(prices) || prices.length === 0) {
-    simulationError('La série de prix est vide.');
+    return simulationError('La série de prix est vide.');
   }
   if (amount <= 0 || !Number.isFinite(amount)) {
-    simulationError('Le montant doit être un nombre positif.');
+    return simulationError('Le montant doit être un nombre positif.');
   }
   if (prices.some((p) => p.price <= 0 || !Number.isFinite(p.price))) {
-    simulationError('La série contient un prix invalide (≤ 0).');
+    return simulationError('La série contient un prix invalide (≤ 0).');
   }
 
   let units = 0; // unités de crypto cumulées
@@ -121,9 +121,8 @@ export function simulate(input: SimulationInput): SimulationResult {
     }
 
     if (buyThisPoint) {
-      const investAmount = frequency === 'once' ? amount : amount;
-      units += investAmount / point.price; // achat au prix du jour
-      totalInvested += investAmount;
+      units += amount / point.price; // achat au prix du jour
+      totalInvested += amount;
       lastBuy = currentDate;
     }
 
