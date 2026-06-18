@@ -96,7 +96,9 @@ npm run lint
 ## Workflow Git
 
 - Une branche par bloc fonctionnel (`feat/...`), fusionnée dans `main` validée.
-- **Conventional Commits** : `feat:`, `fix:`, `test:`, `chore:`, `docs:`, `refactor:`.
+- **Commits conventionnels** : au format `<type>(<scope>): <subject>` avec des types `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`.
+- PRs même en solo (workflow visible aux recruteurs).
+- GitHub Actions : `lint`, `typecheck`, `build`, `test` sur chaque PR.
 - Versionnage sémantique.
 
 ## Contraintes & garde-fous
