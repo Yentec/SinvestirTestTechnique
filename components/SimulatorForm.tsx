@@ -1,0 +1,144 @@
+'use client';
+
+import { SUPPORTED_COINS } from '@/lib/coingecko';
+import type { Frequency } from '@/lib/simulate';
+
+export interface FormState {
+  coin: string;
+  amount: number;
+  frequency: Frequency;
+  from: string; // ISO YYYY-MM-DD
+  to: string;
+}
+
+interface SimulatorFormProps {
+  value: FormState;
+  onChange: (next: FormState) => void;
+  onSubmit: () => void;
+  loading: boolean;
+}
+
+const FREQUENCIES: { value: Frequency; label: string }[] = [
+  { value: 'once', label: 'Une fois' },
+  { value: 'daily', label: 'Quotidien' },
+  { value: 'weekly', label: 'Hebdomadaire' },
+  { value: 'monthly', label: 'Mensuel' },
+];
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+export function SimulatorForm({
+  value,
+  onChange,
+  onSubmit,
+  loading,
+}: SimulatorFormProps) {
+  function update<K extends keyof FormState>(key: K, v: FormState[K]) {
+    onChange({ ...value, [key]: v });
+  }
+
+  const labelCls = 'block text-sm font-medium text-white/70 mb-1.5';
+  const fieldCls =
+    'w-full rounded-input border border-white/10 bg-bg-card-alt px-3 py-2.5 ' +
+    'text-white outline-none transition-colors focus:border-brand ' +
+    'focus:ring-1 focus:ring-brand';
+
+  return (
+    <div className="rounded-card border border-white/10 bg-bg-card p-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Crypto */}
+        <div>
+          <label htmlFor="coin" className={labelCls}>
+            Crypto-monnaie
+          </label>
+          <select
+            id="coin"
+            className={fieldCls}
+            value={value.coin}
+            onChange={(e) => update('coin', e.target.value)}
+          >
+            {SUPPORTED_COINS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.symbol})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Montant */}
+        <div>
+          <label htmlFor="amount" className={labelCls}>
+            Montant investi (€)
+          </label>
+          <input
+            id="amount"
+            type="number"
+            min={1}
+            step={10}
+            className={fieldCls}
+            value={value.amount}
+            onChange={(e) => update('amount', Number(e.target.value))}
+          />
+        </div>
+
+        {/* Fréquence */}
+        <div>
+          <label htmlFor="frequency" className={labelCls}>
+            Fréquence d&apos;investissement
+          </label>
+          <select
+            id="frequency"
+            className={fieldCls}
+            value={value.frequency}
+            onChange={(e) => update('frequency', e.target.value as Frequency)}
+          >
+            {FREQUENCIES.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Dates */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="from" className={labelCls}>
+              Du
+            </label>
+            <input
+              id="from"
+              type="date"
+              max={value.to || TODAY}
+              className={fieldCls}
+              value={value.from}
+              onChange={(e) => update('from', e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="to" className={labelCls}>
+              Au
+            </label>
+            <input
+              id="to"
+              type="date"
+              max={TODAY}
+              className={fieldCls}
+              value={value.to}
+              onChange={(e) => update('to', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={loading}
+        className="mt-6 w-full rounded-input bg-brand px-5 py-3 font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+      >
+        {loading ? 'Calcul en cours…' : 'Simuler'}
+      </button>
+    </div>
+  );
+}
