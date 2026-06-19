@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SimulatorForm, type FormState } from '@/components/SimulatorForm';
 import { ResultsCard } from '@/components/ResultsCard';
 import { PerformanceChart } from '@/components/PerformanceChart';
@@ -28,20 +28,25 @@ interface SimulatorProps {
   embedded?: boolean;
 }
 
+// Délai d'inactivité avant de relancer la simulation automatiquement.
+const AUTO_RUN_DELAY_MS = 2000;
+
 export function Simulator({ embedded = false }: SimulatorProps) {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const { result, source, symbol, loading, error, run } = useSimulation();
+
+  // Relance la simulation après une pause dans la saisie (debounce), y
+  // compris au montage pour le formulaire par défaut : plus besoin de bouton.
+  useEffect(() => {
+    const timer = setTimeout(() => run(form), AUTO_RUN_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [form, run]);
 
   return (
     <div className="flex flex-col gap-5">
       {/* Ligne 1 : formulaire + chiffres clés côte à côte (desktop) */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <SimulatorForm
-          value={form}
-          onChange={setForm}
-          onSubmit={() => run(form)}
-          loading={loading}
-        />
+        <SimulatorForm value={form} onChange={setForm} loading={loading} />
         {result ? (
           <ResultsCard result={result} symbol={symbol} />
         ) : (

@@ -14,7 +14,6 @@ export interface FormState {
 interface SimulatorFormProps {
   value: FormState;
   onChange: (next: FormState) => void;
-  onSubmit: () => void;
   loading: boolean;
 }
 
@@ -27,12 +26,7 @@ const FREQUENCIES: { value: Frequency; label: string }[] = [
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-export function SimulatorForm({
-  value,
-  onChange,
-  onSubmit,
-  loading,
-}: SimulatorFormProps) {
+export function SimulatorForm({ value, onChange, loading }: SimulatorFormProps) {
   function update<K extends keyof FormState>(key: K, v: FormState[K]) {
     onChange({ ...value, [key]: v });
   }
@@ -134,14 +128,14 @@ export function SimulatorForm({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={loading}
-        className="mt-6 w-full rounded-input bg-brand px-5 py-3 font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+      {/* La simulation se relance seule après un temps d'inactivité (voir
+          Simulator.tsx) : pas de bouton, juste un indicateur discret. */}
+      <p
+        className="mt-6 text-center text-sm text-white/40"
+        aria-live="polite"
       >
-        {loading ? 'Calcul en cours…' : 'Simuler'}
-      </button>
+        {loading ? 'Calcul en cours…' : ''}
+      </p>
     </div>
   );
 }
