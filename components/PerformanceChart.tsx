@@ -18,6 +18,7 @@ import { Crosshair } from '@/components/ChartCrosshair';
 import { XAxisValueTag, YAxisValueTag } from '@/components/ChartAxisTooltip';
 import { ChartLegend } from '@/components/ChartLegend';
 import { TimeRangeSlider } from '@/components/TimeRangeSlider';
+import { useIsMobile } from '@/components/useIsMobile';
 import {
   formatEur,
   formatEurAxis,
@@ -36,10 +37,13 @@ interface PerformanceChartProps {
 // comparaison de props de Recharts et rejouerait l'animation des axes.
 const AXIS_TICK_STYLE = { fill: tokens.color.textFaint, fontSize: 12 };
 const CHART_MARGIN = { top: 8, right: 8, bottom: 8, left: 24 };
-const AXIS_WIDTH = 64;
 const SERIES_KEYS = ['value', 'invested', 'units', 'price'];
 
 export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
+  // Largeur d'axe réduite sur mobile : sur un écran étroit, la largeur fixe
+  // des deux axes Y grignote une part disproportionnée de la zone de tracé.
+  const isMobile = useIsMobile();
+  const axisWidth = isMobile ? 44 : 64;
   // Toutes les courbes sont visibles par défaut, sauf le prix (orange).
   const [hidden, setHidden] = useState<Set<string>>(() => new Set(['price']));
   const toggle = (key: string) =>
@@ -166,10 +170,10 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
         value={range}
         onChange={setRange}
         formatLabel={(i) => formatDate(timeline[i]!.date)}
-        insetLeft={CHART_MARGIN.left + AXIS_WIDTH}
-        insetRight={CHART_MARGIN.right + AXIS_WIDTH}
+        insetLeft={CHART_MARGIN.left + axisWidth}
+        insetRight={CHART_MARGIN.right + axisWidth}
       />
-      <div className="h-128 w-full">
+      <div className="h-72 w-full sm:h-96 lg:h-128">
         {/* `initialDimension` évite l'avertissement Recharts sur le premier
             rendu, avant que le ResizeObserver n'ait mesuré le conteneur réel. */}
         <ResponsiveContainer
@@ -219,7 +223,7 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
               ticks={unitTicks}
               tickFormatter={formatUnitsAxis}
               tick={AXIS_TICK_STYLE}
-              width={AXIS_WIDTH}
+              width={axisWidth}
               axisLine={false}
               tickLine={false}
             />
@@ -233,7 +237,7 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
               ticks={eurTicks}
               tickFormatter={formatEurAxis}
               tick={AXIS_TICK_STYLE}
-              width={AXIS_WIDTH}
+              width={axisWidth}
               axisLine={false}
               tickLine={false}
             />

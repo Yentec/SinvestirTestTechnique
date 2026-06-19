@@ -22,14 +22,15 @@ interface TimeRangeSliderProps {
 // `pointer-events-none` sur le champ entier + `pointer-events-auto` sur le
 // seul pseudo-élément du curseur : deux <input type="range"> superposés
 // restent chacun saisissables uniquement à l'endroit de leur poignée, sans
-// script de drag personnalisé.
+// script de drag personnalisé. Poignées à 20px (et non 14px) pour rester
+// attrapables au doigt sur mobile.
 const THUMB_CLASS =
-  '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 ' +
-  '[&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:cursor-pointer ' +
+  '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 ' +
+  '[&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:cursor-pointer ' +
   '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full ' +
   '[&::-webkit-slider-thumb]:bg-brand ' +
-  '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 ' +
-  '[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:cursor-pointer ' +
+  '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 ' +
+  '[&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:cursor-pointer ' +
   '[&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full ' +
   '[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-brand';
 
@@ -83,7 +84,7 @@ export function TimeRangeSlider({
           {formatLabel(end)}
         </span>
       </div>
-      <div className="relative flex h-4 items-center">
+      <div className="relative flex h-6 items-center">
         <div className="absolute inset-x-0 h-1 rounded-full bg-white/10" />
         <div
           className="absolute h-1 rounded-full bg-brand"
@@ -98,7 +99,7 @@ export function TimeRangeSlider({
           onChange={(e) =>
             setLocal([Math.min(Number(e.target.value), end), end])
           }
-          className={`pointer-events-none absolute h-1 w-full cursor-pointer appearance-none bg-transparent ${THUMB_CLASS}`}
+          className={`pointer-events-none absolute h-6 w-full cursor-pointer appearance-none bg-transparent ${THUMB_CLASS}`}
         />
         <input
           type="range"
@@ -109,7 +110,7 @@ export function TimeRangeSlider({
           onChange={(e) =>
             setLocal([start, Math.max(Number(e.target.value), start)])
           }
-          className={`pointer-events-none absolute h-1 w-full cursor-pointer appearance-none bg-transparent ${THUMB_CLASS}`}
+          className={`pointer-events-none absolute h-6 w-full cursor-pointer appearance-none bg-transparent ${THUMB_CLASS}`}
         />
       </div>
     </div>
