@@ -32,6 +32,13 @@ export const tokens = {
 
     positive: '#34D399',
     negative: '#F87171',
+
+    // Couleurs catégorielles des courbes secondaires (PerformanceChart, GainsChart).
+    chart: {
+      invested: '#A78BFA',
+      secondary: '#FACC15',
+      price: '#FB923C',
+    },
   },
   radius: {
     pill: '9999px',

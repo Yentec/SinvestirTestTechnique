@@ -3,62 +3,56 @@ import { formatEur, formatPct, formatUnits } from '@/lib/format';
 
 interface ResultsCardProps {
   result: SimulationResult;
-  symbol: string; // ex. "BTC"
+  symbol: string;
 }
 
 export function ResultsCard({ result, symbol }: ResultsCardProps) {
   const isGain = result.profit >= 0;
   const profitColor = isGain ? 'text-positive' : 'text-negative';
 
+  // Prix moyen d'acquisition = total investi / unités (dérivé, pas de recalcul).
+  const avgPrice =
+    result.unitsAccumulated > 0
+      ? result.totalInvested / result.unitsAccumulated
+      : 0;
+
+  const rows: { label: string; value: string; className?: string }[] = [
+    { label: 'Investi', value: formatEur(result.totalInvested) },
+    { label: `${symbol} acquis`, value: formatUnits(result.unitsAccumulated) },
+    { label: "Prix moyen d'acquisition", value: formatEur(avgPrice) },
+    { label: 'Capital final', value: formatEur(result.finalValue) },
+    {
+      label: 'Plus-value',
+      value: formatEur(result.profit),
+      className: profitColor,
+    },
+    {
+      label: 'Performance',
+      value: formatPct(result.profitPct),
+      className: 'text-gold',
+    },
+  ];
+
   return (
     <div className="rounded-card border border-white/10 bg-bg-card p-6">
       <h3 className="mb-5 text-sm font-medium uppercase tracking-wide text-white/50">
-        Vos résultats
+        Chiffres clés
       </h3>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        {/* Capital final */}
-        <div>
-          <p className="text-sm text-white/50">Capital final</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">
-            {formatEur(result.finalValue)}
-          </p>
-        </div>
-
-        {/* Plus / moins-value */}
-        <div>
-          <p className="text-sm text-white/50">Plus-value</p>
-          <p
-            className={`mt-1 text-2xl font-semibold tabular-nums ${profitColor}`}
+      <dl className="flex flex-col divide-y divide-white/5">
+        {rows.map((r) => (
+          <div
+            key={r.label}
+            className="flex items-center justify-between py-2.5"
           >
-            {formatEur(result.profit)}
-          </p>
-        </div>
-
-        {/* Performance % — accent doré, comme le site de référence */}
-        <div>
-          <p className="text-sm text-white/50">Performance</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-gold">
-            {formatPct(result.profitPct)}
-          </p>
-        </div>
-      </div>
-
-      {/* Détail secondaire */}
-      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-white/10 pt-4 text-sm text-white/50">
-        <span>
-          Total investi :{' '}
-          <span className="text-white/80">
-            {formatEur(result.totalInvested)}
-          </span>
-        </span>
-        <span>
-          {symbol} accumulés :{' '}
-          <span className="text-white/80">
-            {formatUnits(result.unitsAccumulated)}
-          </span>
-        </span>
-      </div>
+            <dt className="text-sm text-white/50">{r.label}</dt>
+            <dd
+              className={`text-base font-semibold tabular-nums ${r.className ?? ''}`}
+            >
+              {r.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

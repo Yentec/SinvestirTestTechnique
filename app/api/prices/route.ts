@@ -14,6 +14,7 @@ import {
   type CoinId,
 } from '@/lib/coingecko';
 import type { PricePoint } from '@/lib/simulate';
+import type { PricesResponse, ApiError } from '@/lib/api-types';
 
 const LIVE_WINDOW_DAYS = 365;
 
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
 
   // --- Validation des paramètres (→ 400, on n'appelle pas l'API) ---
   if (!isSupportedCoin(coin)) {
-    return NextResponse.json(
+    return NextResponse.json<ApiError>(
       { error: 'Crypto non supportée.', code: 'INVALID_INPUT' },
       { status: 400 },
     );
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
   const fromTs = isoToUnixSeconds(from);
   const toTs = isoToUnixSeconds(to);
   if (fromTs === null || toTs === null || fromTs >= toTs) {
-    return NextResponse.json(
+    return NextResponse.json<ApiError>(
       { error: 'Intervalle de dates invalide.', code: 'INVALID_INPUT' },
       { status: 400 },
     );
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
   if (isWithinLiveWindow(fromTs, toTs)) {
     try {
       const prices = await fetchMarketChart(coin, fromTs, toTs);
-      return NextResponse.json(
+      return NextResponse.json<PricesResponse>(
         { coin, source: 'live', prices },
         { headers: { 'x-price-source': 'live' } },
       );
@@ -89,18 +90,18 @@ export async function GET(req: NextRequest) {
     const full = await readFallback(coin);
     const prices = clampSeries(full, from, to);
     if (prices.length === 0) {
-      return NextResponse.json(
+      return NextResponse.json<ApiError>(
         { error: 'Aucune donnée pour cette période.', code: 'NOT_FOUND' },
         { status: 404 },
       );
     }
-    return NextResponse.json(
+    return NextResponse.json<PricesResponse>(
       { coin, source: 'fallback', prices },
       { headers: { 'x-price-source': 'fallback' } },
     );
   } catch (fallbackError) {
     console.error('[prices] fallback failed:', fallbackError);
-    return NextResponse.json(
+    return NextResponse.json<ApiError>(
       { error: 'Données indisponibles.', code: 'UPSTREAM' },
       { status: 502 },
     );
