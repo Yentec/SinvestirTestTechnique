@@ -33,6 +33,10 @@ export interface TimelinePoint {
   invested: number;
   /** Valeur du portefeuille à cette date (unités cumulées × prix du jour). */
   value: number;
+  /** Prix unitaire de l'actif à cette date (pour la courbe de référence). */
+  price: number;
+  /** Unités de crypto cumulées jusqu'à cette date (incluse). */
+  units: number;
 }
 
 export interface SimulationResult {
@@ -131,6 +135,8 @@ export function simulate(input: SimulationInput): SimulationResult {
       date: point.date,
       invested: round2(totalInvested),
       value: round2(units * point.price),
+      price: point.price,
+      units,
     });
   }
 

@@ -130,3 +130,37 @@ describe('simulate — robustesse', () => {
     expect(r.profit).toBe(0);
   });
 });
+
+describe('simulate — timeline', () => {
+  it("expose le prix de l'actif à chaque point", () => {
+    const r = simulate({
+      prices: doublingSeries,
+      amount: 1000,
+      frequency: 'once',
+    });
+    expect(r.timeline.map((p) => p.price)).toEqual([100, 125, 150, 200]);
+  });
+
+  it('garde les unités constantes après l\'achat unique (one-shot)', () => {
+    const r = simulate({
+      prices: doublingSeries,
+      amount: 1000,
+      frequency: 'once',
+    });
+    expect(r.timeline.every((p) => p.units === 10)).toBe(true);
+  });
+
+  it('cumule les unités point par point (DCA)', () => {
+    const r = simulate({
+      prices: doublingSeries,
+      amount: 100,
+      frequency: 'daily',
+    });
+    const units = r.timeline.map((p) => p.units);
+    // 100/100, +100/125, +100/150, +100/200 → cumul croissant.
+    expect(units[0]).toBeCloseTo(1, 6);
+    expect(units[1]).toBeCloseTo(1.8, 6);
+    expect(units[2]).toBeCloseTo(2.46667, 4);
+    expect(units[3]).toBeCloseTo(2.96667, 4);
+  });
+});
