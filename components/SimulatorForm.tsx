@@ -45,11 +45,14 @@ export function SimulatorForm({
 
   return (
     <div className="rounded-card border border-white/10 bg-bg-card p-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="">
         {/* Crypto */}
+        <h3 className="mb-5 text-sm font-medium uppercase tracking-wide text-white/50">
+          Simulation
+        </h3>
         <div>
           <label htmlFor="coin" className={labelCls}>
-            Crypto-monnaie
+            Actif numérique
           </label>
           <select
             id="coin"
@@ -101,7 +104,7 @@ export function SimulatorForm({
         </div>
 
         {/* Dates */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="">
           <div>
             <label htmlFor="from" className={labelCls}>
               Du
