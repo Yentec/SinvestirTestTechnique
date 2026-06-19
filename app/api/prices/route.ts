@@ -6,13 +6,8 @@
  * échoue. L'en-tête `x-price-source` indique la source servie (live | fallback).
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import {
-  fetchMarketChart,
-  isSupportedCoin,
-  type CoinId,
-} from '@/lib/coingecko';
+import { getFallbackPrices } from '@/lib/fallback';
+import { fetchMarketChart, isSupportedCoin } from '@/lib/coingecko';
 import type { PricePoint } from '@/lib/simulate';
 import type { PricesResponse, ApiError } from '@/lib/api-types';
 
@@ -29,13 +24,6 @@ function isWithinLiveWindow(fromTs: number, toTs: number): boolean {
 function isoToUnixSeconds(iso: string): number | null {
   const ms = Date.parse(`${iso}T00:00:00Z`);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
-}
-
-async function readFallback(coinId: CoinId): Promise<PricePoint[]> {
-  const path = join(process.cwd(), 'data', 'fallback', `${coinId}.json`);
-  const raw = await readFile(path, 'utf-8');
-  const parsed = JSON.parse(raw) as { prices: PricePoint[] };
-  return parsed.prices;
 }
 
 /** Borne une série figée sur l'intervalle [from, to] demandé. */
@@ -87,7 +75,7 @@ export async function GET(req: NextRequest) {
 
   // --- Fallback (historique long ou échec live) ---
   try {
-    const full = await readFallback(coin);
+    const full = getFallbackPrices(coin);
     const prices = clampSeries(full, from, to);
     if (prices.length === 0) {
       return NextResponse.json<ApiError>(
