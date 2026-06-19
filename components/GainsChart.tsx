@@ -21,7 +21,13 @@ import { niceAxisTicks } from '@/lib/chart-scale';
 import { Crosshair } from '@/components/ChartCrosshair';
 import { XAxisValueTag, YAxisValueTag } from '@/components/ChartAxisTooltip';
 import { ChartLegend } from '@/components/ChartLegend';
-import { formatEur, formatEurAxis, formatDate } from '@/lib/format';
+import { TimeRangeSlider } from '@/components/TimeRangeSlider';
+import {
+  formatEur,
+  formatEurAxis,
+  formatDate,
+  formatMonthTick,
+} from '@/lib/format';
 
 interface GainsChartProps {
   timeline: TimelinePoint[];
@@ -32,6 +38,7 @@ interface GainsChartProps {
 // comparaison de props de Recharts et rejouerait l'animation des axes.
 const AXIS_TICK_STYLE = { fill: tokens.color.textFaint, fontSize: 12 };
 const CHART_MARGIN = { top: 8, right: 8, bottom: 8, left: 24 };
+const AXIS_WIDTH = 64;
 const SERIES_KEYS = ['gain', 'invested', 'value', 'price'];
 
 /**
@@ -177,19 +184,37 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
     [timeline],
   );
 
+  // Période affichée (indices dans `data`), pilotée par le double curseur.
+  // Réinitialisée à la série complète quand une nouvelle simulation arrive
+  // (sinon les indices pointeraient sur une série différente).
+  const [range, setRange] = useState<[number, number]>([
+    0,
+    Math.max(0, data.length - 1),
+  ]);
+  const [prevTimelineForRange, setPrevTimelineForRange] = useState(timeline);
+  if (prevTimelineForRange !== timeline) {
+    setPrevTimelineForRange(timeline);
+    setRange([0, Math.max(0, data.length - 1)]);
+  }
+  const visibleData = useMemo(
+    () => data.slice(range[0], range[1] + 1),
+    [data, range],
+  );
+
   // Une courbe ne se ré-anime que si elle vient d'apparaître ou si la
-  // simulation a changé — sinon un changement de domaine d'axe causé par une
-  // courbe sœur masquée/affichée rejouerait son tracé. `animatingKeys` doit
-  // être un state : une variable locale serait recalculée après le re-rendu
+  // période affichée a changé (nouvelle simulation ou déplacement du
+  // curseur) — sinon un changement de domaine d'axe causé par une courbe
+  // sœur masquée/affichée rejouerait son tracé. `animatingKeys` doit être un
+  // state : une variable locale serait recalculée après le re-rendu
   // déclenché par `setState` et retomberait toujours à "rien à animer" au
   // moment du rendu réellement affiché.
-  const [prevData, setPrevData] = useState(data);
+  const [prevVisible, setPrevVisible] = useState(visibleData);
   const [prevHidden, setPrevHidden] = useState(hidden);
   const [animatingKeys, setAnimatingKeys] = useState<Set<string> | 'all'>(
     'all',
   );
-  if (prevData !== data) {
-    setPrevData(data);
+  if (prevVisible !== visibleData) {
+    setPrevVisible(visibleData);
     setAnimatingKeys('all');
   } else if (prevHidden !== hidden) {
     const justShown = new Set(
@@ -223,19 +248,21 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
     // quand une courbe redevient visible.
     const keysForDomain =
       visibleKeys.length > 0 ? visibleKeys : ['invested' as const];
+    // Pas de plancher/plafond forcé à 0 : l'axe suit le min/max réel de la
+    // période affichée (zoomer sur une plage toujours positive évite de
+    // garder un axe étiré jusqu'au zéro). La ligne de référence à 0 ne
+    // s'affiche simplement plus si elle sort de cette plage.
     const minValue = Math.min(
-      0,
-      ...data.map((d) => (keysForDomain.includes('gain') ? d.gain : 0)),
+      ...visibleData.map((d) => Math.min(...keysForDomain.map((key) => d[key]))),
     );
     const maxValue = Math.max(
-      0,
-      ...data.map((d) => Math.max(...keysForDomain.map((key) => d[key]))),
+      ...visibleData.map((d) => Math.max(...keysForDomain.map((key) => d[key]))),
     );
     // 14 graduations (vs 8 par défaut) : ça n'affecte que leur densité, pas
     // l'amplitude ni le pas de l'échelle, donc l'axe reste cohérent avec celui
     // de PerformanceChart pour la courbe "Investi" commune.
     return niceAxisTicks(minValue, maxValue, 1000, 14);
-  }, [data, gainHidden, investedHidden, valueHidden]);
+  }, [visibleData, gainHidden, investedHidden, valueHidden]);
   const domainMin = ticks[0]!;
   const domainMax = ticks[ticks.length - 1]!;
 
@@ -249,11 +276,33 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
     [symbol],
   );
 
+  const fullRange: [number, number] = [0, Math.max(0, data.length - 1)];
+  const isZoomed = range[0] !== fullRange[0] || range[1] !== fullRange[1];
+
   return (
     <div className="rounded-card border border-white/10 bg-bg-card p-4 sm:p-6">
-      <h3 className="mb-4 text-sm font-medium uppercase tracking-wide text-white/50">
-        Gains / Pertes
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-medium uppercase tracking-wide text-white/50">
+          Gains / Pertes
+        </h3>
+        {isZoomed && (
+          <button
+            type="button"
+            onClick={() => setRange(fullRange)}
+            className="text-xs text-white/50 hover:text-white/80 hover:underline"
+          >
+            Réinitialiser
+          </button>
+        )}
+      </div>
+      <TimeRangeSlider
+        length={data.length}
+        value={range}
+        onChange={setRange}
+        formatLabel={(i) => formatDate(data[i]!.date)}
+        insetLeft={CHART_MARGIN.left + AXIS_WIDTH}
+        insetRight={CHART_MARGIN.right + AXIS_WIDTH}
+      />
       <div className="h-128 w-full">
         {/* `initialDimension` évite l'avertissement Recharts sur le premier
             rendu, avant que le ResizeObserver n'ait mesuré le conteneur réel. */}
@@ -263,7 +312,7 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
           initialDimension={{ width: 800, height: 512 }}
         >
           <ComposedChart
-            data={data}
+            data={visibleData}
             margin={CHART_MARGIN}
           >
             <GainGradient />
@@ -275,7 +324,7 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
             />
             <XAxis
               dataKey="date"
-              tickFormatter={formatDate}
+              tickFormatter={formatMonthTick}
               tick={AXIS_TICK_STYLE}
               minTickGap={48}
               axisLine={false}
@@ -288,7 +337,7 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
               ticks={ticks}
               tickFormatter={formatEurAxis}
               tick={AXIS_TICK_STYLE}
-              width={64}
+              width={AXIS_WIDTH}
               axisLine={false}
               tickLine={false}
             />
@@ -302,7 +351,7 @@ export function GainsChart({ timeline, symbol }: GainsChartProps) {
               yAxisId="alignment"
               orientation="right"
               domain={[0, 1]}
-              width={64}
+              width={AXIS_WIDTH}
               axisLine={false}
               tickLine={false}
               tick={false}

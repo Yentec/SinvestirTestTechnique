@@ -17,6 +17,7 @@ import { niceAxisTicks } from '@/lib/chart-scale';
 import { Crosshair } from '@/components/ChartCrosshair';
 import { XAxisValueTag, YAxisValueTag } from '@/components/ChartAxisTooltip';
 import { ChartLegend } from '@/components/ChartLegend';
+import { TimeRangeSlider } from '@/components/TimeRangeSlider';
 import {
   formatEur,
   formatEurAxis,
@@ -35,6 +36,7 @@ interface PerformanceChartProps {
 // comparaison de props de Recharts et rejouerait l'animation des axes.
 const AXIS_TICK_STYLE = { fill: tokens.color.textFaint, fontSize: 12 };
 const CHART_MARGIN = { top: 8, right: 8, bottom: 8, left: 24 };
+const AXIS_WIDTH = 64;
 const SERIES_KEYS = ['value', 'invested', 'units', 'price'];
 
 export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
@@ -51,19 +53,37 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
       return next;
     });
 
+  // Période affichée (indices dans `timeline`), pilotée par le double
+  // curseur. Réinitialisée à la série complète quand une nouvelle simulation
+  // arrive (sinon les indices pointeraient sur une série différente).
+  const [range, setRange] = useState<[number, number]>([
+    0,
+    Math.max(0, timeline.length - 1),
+  ]);
+  const [prevTimelineForRange, setPrevTimelineForRange] = useState(timeline);
+  if (prevTimelineForRange !== timeline) {
+    setPrevTimelineForRange(timeline);
+    setRange([0, Math.max(0, timeline.length - 1)]);
+  }
+  const visibleTimeline = useMemo(
+    () => timeline.slice(range[0], range[1] + 1),
+    [timeline, range],
+  );
+
   // Une courbe ne se ré-anime que si elle vient d'apparaître ou si la
-  // simulation a changé — sinon un changement de domaine d'axe causé par une
-  // courbe sœur masquée/affichée rejouerait son tracé. `animatingKeys` doit
-  // être un state : une variable locale serait recalculée après le re-rendu
+  // période affichée a changé (nouvelle simulation ou déplacement du
+  // curseur) — sinon un changement de domaine d'axe causé par une courbe
+  // sœur masquée/affichée rejouerait son tracé. `animatingKeys` doit être un
+  // state : une variable locale serait recalculée après le re-rendu
   // déclenché par `setState` et retomberait toujours à "rien à animer" au
   // moment du rendu réellement affiché.
-  const [prevTimeline, setPrevTimeline] = useState(timeline);
+  const [prevVisible, setPrevVisible] = useState(visibleTimeline);
   const [prevHidden, setPrevHidden] = useState(hidden);
   const [animatingKeys, setAnimatingKeys] = useState<Set<string> | 'all'>(
     'all',
   );
-  if (prevTimeline !== timeline) {
-    setPrevTimeline(timeline);
+  if (prevVisible !== visibleTimeline) {
+    setPrevVisible(visibleTimeline);
     setAnimatingKeys('all');
   } else if (prevHidden !== hidden) {
     const justShown = new Set(
@@ -101,25 +121,54 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
     // plutôt que d'effondrer l'axe à [0, 0] — ça évite un saut d'échelle
     // quand une courbe redevient visible.
     const keysForDomain = visibleKeys.length > 0 ? visibleKeys : ['invested' as const];
-    const maxValue = timeline.reduce(
-      (max, p) => Math.max(max, ...keysForDomain.map((key) => p[key])),
-      0,
+    // Le bas de l'axe suit le minimum réel de la période affichée (pas de
+    // plancher à 0) : zoomer sur une plage qui ne descend jamais bas évite
+    // de garder un axe inutilement étiré vers le bas.
+    const minValue = Math.min(
+      ...visibleTimeline.map((p) => Math.min(...keysForDomain.map((key) => p[key]))),
     );
-    return niceAxisTicks(0, maxValue, 1000);
-  }, [timeline, investedHidden, valueHidden]);
+    const maxValue = Math.max(
+      ...visibleTimeline.map((p) => Math.max(...keysForDomain.map((key) => p[key]))),
+    );
+    return niceAxisTicks(minValue, maxValue, 1000);
+  }, [visibleTimeline, investedHidden, valueHidden]);
 
   // "units" est seule sur son axe : la masquer ne libère de place pour aucune
   // autre courbe, donc l'échelle reste pleine plutôt que de s'effondrer à 0.
+  // Même principe de bas d'axe non plafonné à 0 que `eurTicks` ci-dessus.
   const unitTicks = useMemo(() => {
-    const maxValue = timeline.reduce((max, p) => Math.max(max, p.units), 0);
-    return niceAxisTicks(0, maxValue, 1, 14);
-  }, [timeline]);
+    const minValue = Math.min(...visibleTimeline.map((p) => p.units));
+    const maxValue = Math.max(...visibleTimeline.map((p) => p.units));
+    return niceAxisTicks(minValue, maxValue, 1, 14);
+  }, [visibleTimeline]);
+
+  const fullRange: [number, number] = [0, Math.max(0, timeline.length - 1)];
+  const isZoomed = range[0] !== fullRange[0] || range[1] !== fullRange[1];
 
   return (
     <div className="rounded-card border border-white/10 bg-bg-card p-4 sm:p-6">
-      <h3 className="mb-4 text-sm font-medium uppercase tracking-wide text-white/50">
-        Historique
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-medium uppercase tracking-wide text-white/50">
+          Historique
+        </h3>
+        {isZoomed && (
+          <button
+            type="button"
+            onClick={() => setRange(fullRange)}
+            className="text-xs text-white/50 hover:text-white/80 hover:underline"
+          >
+            Réinitialiser
+          </button>
+        )}
+      </div>
+      <TimeRangeSlider
+        length={timeline.length}
+        value={range}
+        onChange={setRange}
+        formatLabel={(i) => formatDate(timeline[i]!.date)}
+        insetLeft={CHART_MARGIN.left + AXIS_WIDTH}
+        insetRight={CHART_MARGIN.right + AXIS_WIDTH}
+      />
       <div className="h-128 w-full">
         {/* `initialDimension` évite l'avertissement Recharts sur le premier
             rendu, avant que le ResizeObserver n'ait mesuré le conteneur réel. */}
@@ -129,7 +178,7 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
           initialDimension={{ width: 800, height: 512 }}
         >
           <ComposedChart
-            data={timeline}
+            data={visibleTimeline}
             margin={CHART_MARGIN}
           >
             <defs>
@@ -166,11 +215,11 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
               yAxisId="units"
               includeHidden
               allowDataOverflow
-              domain={[0, unitTicks[unitTicks.length - 1]!]}
+              domain={[unitTicks[0]!, unitTicks[unitTicks.length - 1]!]}
               ticks={unitTicks}
               tickFormatter={formatUnitsAxis}
               tick={AXIS_TICK_STYLE}
-              width={64}
+              width={AXIS_WIDTH}
               axisLine={false}
               tickLine={false}
             />
@@ -180,11 +229,11 @@ export function PerformanceChart({ timeline, symbol }: PerformanceChartProps) {
               orientation="right"
               includeHidden
               allowDataOverflow
-              domain={[0, eurTicks[eurTicks.length - 1]!]}
+              domain={[eurTicks[0]!, eurTicks[eurTicks.length - 1]!]}
               ticks={eurTicks}
               tickFormatter={formatEurAxis}
               tick={AXIS_TICK_STYLE}
-              width={64}
+              width={AXIS_WIDTH}
               axisLine={false}
               tickLine={false}
             />
