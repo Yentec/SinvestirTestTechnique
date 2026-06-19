@@ -57,8 +57,13 @@ export function TimeRangeSlider({
   const max = length - 1;
   if (max <= 0) return null;
 
-  const [start, end] = local;
-  const commit = () => onChange(local);
+  // Toujours retomber dans [0, max] : si `value` arrive momentanément
+  // désynchronisé de `length` (ex. nouvelle simulation pendant un drag en
+  // cours), on évite d'indexer une série plus courte hors limites plutôt que
+  // de propager un crash jusqu'à `formatLabel`.
+  const start = Math.min(Math.max(local[0], 0), max);
+  const end = Math.min(Math.max(local[1], 0), max);
+  const commit = () => onChange([start, end]);
   const startPct = (start / max) * 100;
   const endPct = (end / max) * 100;
 
