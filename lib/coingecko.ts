@@ -47,11 +47,6 @@ export async function fetchMarketChart(
   from: number,
   to: number,
 ): Promise<PricePoint[]> {
-  console.log({
-    coinId,
-    from,
-    to,
-  });
   const url =
     `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart/range` +
     `?vs_currency=eur&from=${from}&to=${to}&x_cg_demo_api_key=CG-GUGfd3d7cZdQRy4P7MUorYL5`;
